@@ -1,3 +1,0 @@
-package sperformance
-
-object Main {}

@@ -2,6 +2,7 @@ package sperformance
 
 import scala.reflect.Manifest
 import collection.mutable.ListBuffer
+import generators._
 
 trait PerformanceDSLTest extends PerformanceTest {
 
@@ -94,13 +95,22 @@ trait PerformanceDSLTest extends PerformanceTest {
 
 
 
-object MyPerformanceTest extends PerformanceDSLTest with ChartingReporterTest {
+object MyPerformanceTest extends PerformanceDSLTest with charting.ChartingReporterTest {
   performance of "Foldable" in {
     measure method "foreach" in {
       withSize upTo 1000 run { size =>
         val collection = (1 to size).toList
         var tmp = 0
         collection.foreach(x => tmp + x)
+      }
+    }
+  }
+  performance of "List" in {
+    measure method "foreach" in {
+      withSize upTo 1000 run { size =>        
+        var tmp = 0
+        val collection = (1 to size).toList
+        collection.foreach(x => tmp = x * 20)
       }
     }
   }
