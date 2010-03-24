@@ -88,41 +88,8 @@ trait PerformanceDSLTest extends PerformanceTest {
 
   /** Creates generator for size 1 to max */
   object withSize {
-    def upTo(max : Int) : Generator[Int] = new SizeGenerator(1, max, current_module, current_method)
-  }
-}
-
-
-
-
-object MyPerformanceTest extends PerformanceDSLTest with charting.ChartingReporterTest {
-  performance of "List" in {
-    measure method "foreach" in {
-      withSize upTo 1000 run { size =>
-        val collection = (1 to size).toList
-        var tmp = 0
-        collection.foreach(x => tmp + x)
-      }
-    }
-  }
-  performance of "ListBuffer" in {
-    measure method "foreach" in {
-      withSize upTo 1000 run { size =>
-        val collection = new ListBuffer[Int]
-        for( i <- 1 to size) collection += i 
-        var tmp = 0
-        collection.foreach(x => tmp + x)
-      }
-    }
-  }
-  performance of "Array" in {
-    measure method "foreach" in {
-      withSize upTo 1000 run { size =>        
-        var tmp = 0
-        val collection = new Array[Int](size) 
-        for(i <- 1 to size) collection(i-1) = i
-        collection.foreach(x => tmp = x * 20)
-      }
+    def upTo(max : Int) = new {
+      def withSetup[A](f : Int => A) = new SizeGenerator(1, max, current_module, current_method, f)
     }
   }
 }
