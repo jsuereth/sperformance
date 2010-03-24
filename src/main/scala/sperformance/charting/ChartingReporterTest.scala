@@ -3,47 +3,29 @@ package charting
 
 import intelligence._
 
-import collection.mutable.ListBuffer
-import org.jfree.data.xy.{XYSeriesCollection, XYSeries}
-import org.jfree.chart.plot.PlotOrientation
-import org.jfree.chart.{ChartUtilities, ChartFactory}
-import java.io.File
-
-trait ChartSeriesCollector {
-  def collect(result : PerformanceTestResult) : Unit
-}
-class SizeChartSeriesCollector(val module : String, val method : String) extends XYSeries(module + "-" + method, true, true) {
-}
-
-object SizedResult {
-  def unapply(result : PerformanceTestResult) : Option[(String,String,Int,Long)] = {
-    lazy val module = result.attributes.get("module").asInstanceOf[Option[String]]
-    lazy val method = result.attributes.get("method").asInstanceOf[Option[String]]
-    lazy val size = result.axisData.get("size").asInstanceOf[Option[Int]]
-    if(module.isDefined  && method.isDefined && size.isDefined) {
-      Some((module.get, method.get, size.get, result.time))
-    } else None
-  }
-}
-
+/**
+ * This trait can be mixed in if you wish to generate charts after running your performance benchmarks.
+ */
 trait ChartingReporterTest extends PerformanceTest with ClusteringTest {
 
-  override def runTest() : Unit  = {
-    super.runTest()
-    Charting.createReports()
+  //Override runTest so it generates reports when finished
+  override def runTest(context: RunContext) : Unit  = {
+    super.runTest(context)
+    Charting.createReports(context)
   }
 
+  //hide all our variables in this object
   object Charting {
     val chartGenerators : Seq[ChartGenerator] = SizeChartGenerator :: Nil
 
-    def createReports() {
+    def createReports(context : RunContext) {
       //Find data...
       for {
         (_, cluster) <- clusters
         gen <- chartGenerators
         if(gen.canHandleCluster(cluster))
       } {
-        gen.generateChart(cluster)
+        gen.generateChart(cluster, context)
       }
     }
   }

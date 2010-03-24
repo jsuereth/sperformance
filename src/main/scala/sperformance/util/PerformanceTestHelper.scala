@@ -10,11 +10,18 @@ private[sperformance] object PerformanceTestHelper {
    }
 
 
-  def measure(method : Function0[Unit]) : Long = {
+  def measureOnce(method : Function0[Unit]) : Long = {
     val startNano = System.nanoTime
     method.apply()
     val endNano = System.nanoTime
     endNano - startNano
   }
+  def measureAvg(runs : Int)(method : Function0[Unit]) : Long = {
+    val results = for(i <- 1 to runs) yield measureOnce(method)
+    results.sum / results.size
+  }
 
+  def measure(method : Function0[Unit]) : Long = {
+    measureAvg(5)(method)
+  }
 }

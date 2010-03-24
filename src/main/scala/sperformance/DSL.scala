@@ -53,9 +53,9 @@ trait PerformanceDSLTest extends PerformanceTest {
   /**
    * This method will execute a performance test.
    */
-  override def runTest() : Unit  = {
+  override def runTest(context : RunContext) : Unit  = {
     executeDelayedTasks()
-    super.runTest();
+    super.runTest(context);
   }
 
 
@@ -96,7 +96,7 @@ trait PerformanceDSLTest extends PerformanceTest {
 
 
 object MyPerformanceTest extends PerformanceDSLTest with charting.ChartingReporterTest {
-  performance of "Foldable" in {
+  performance of "List" in {
     measure method "foreach" in {
       withSize upTo 1000 run { size =>
         val collection = (1 to size).toList
@@ -105,11 +105,22 @@ object MyPerformanceTest extends PerformanceDSLTest with charting.ChartingReport
       }
     }
   }
-  performance of "List" in {
+  performance of "ListBuffer" in {
+    measure method "foreach" in {
+      withSize upTo 1000 run { size =>
+        val collection = new ListBuffer[Int]
+        for( i <- 1 to size) collection += i 
+        var tmp = 0
+        collection.foreach(x => tmp + x)
+      }
+    }
+  }
+  performance of "Array" in {
     measure method "foreach" in {
       withSize upTo 1000 run { size =>        
         var tmp = 0
-        val collection = (1 to size).toList
+        val collection = new Array[Int](size) 
+        for(i <- 1 to size) collection(i-1) = i
         collection.foreach(x => tmp = x * 20)
       }
     }

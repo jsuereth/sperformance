@@ -32,7 +32,7 @@ object SizeChartGenerator extends ChartGenerator {
       seriesCollection
     }
 
-    override def generateChart(cluster : Cluster) : Unit = {
+    override def generateChart(cluster : Cluster, context :RunContext) : Unit = {
        //Now we rip through cluster data...
        val chartName = makeChartName(cluster)
        val series = makeSeries(cluster)
@@ -41,7 +41,7 @@ object SizeChartGenerator extends ChartGenerator {
        //First we should compare different modules with similar named methods
        //Second we should compare methods on the same module....
        val chart = ChartFactory.createXYLineChart(chartName, "size", "time", series, PlotOrientation.VERTICAL, true, true, false)
-       ChartUtilities.saveChartAsPNG(new File(chartName+ ".png"),chart, 500,500)
+       context.writeResultingChart(List(sizeAxisName),chartName, chart)
      }
 
 }
