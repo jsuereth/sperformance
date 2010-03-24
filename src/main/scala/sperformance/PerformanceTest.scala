@@ -24,6 +24,22 @@ trait ReportHandler {
  * This trait is mixed in when you want to define performance testing runs
  */
 trait PerformanceTest {
+
+  /**
+   * Returns the name of the test being run...
+   *
+   * Default implementation is to look up reflectively the name of the class...
+   */
+  def name : String = {
+    val className = getClass.getCanonicalName
+
+    def isObject = className.endsWith("$")
+    def isTrait = className.endsWith("$class")
+    def isClass = !isObject && !isTrait
+
+    if(isObject) "Object-" + className.dropRight(1) else "Class-" + className
+  }
+
   //Default handler for now...
   implicit def handler : ReportHandler = new ReportHandler {
     def reportResult(result : PerformanceTestResult) {

@@ -4,17 +4,19 @@ import java.io.File
 
 
 object Main {
-  implicit var context = new DefaultRunContext(new File("target/sperformance"))
+  var outputDirectory = new File("target/sperformance")
 
 
-  def runTestsReflectively(tests: Class[_ <: PerformanceTest]*)(implicit context : RunContext) {
+  def runTestsReflectively(tests: Class[_ <: PerformanceTest]*) {
     //TODO - ClassLoader magic....
-    runTests(tests.map(_.newInstance) : _* )(context)
+    runTests(tests.map(_.newInstance) : _* )
   }
 
-  def runTests(tests : PerformanceTest*)(implicit context : RunContext) {
+  def runTests(tests : PerformanceTest*) {
     for(test <- tests) {
+      val context = new DefaultRunContext(new File(outputDirectory,test.name), test.name)
       test.runTest(context)
+      context.generateResultsPage()
     }
   }
 
