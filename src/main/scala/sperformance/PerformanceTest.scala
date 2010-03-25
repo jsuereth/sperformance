@@ -10,8 +10,34 @@ import generators._
 case class PerformanceTestResult(time : Long, axisData : Map[String, Any], attributes : Map[String, Any])
 
 /** A Handler for specific performance test results */
-trait ReportHandler {
-  def reportResult(result : PerformanceTestResult) : Unit  
+trait PerformanceTestRunContext { self =>
+  def reportResult(result : PerformanceTestResult) : Unit
+
+  /**
+   * Creates a new PerformanceTestRunContext that will append the given attribute to tests.
+   */
+  def addAttribute[T,U](attr : (String,U)) : PerformanceTestRunContext = new DelegatedPerformanceTestRunContext(self) {
+    override def reportResult(result : PerformanceTestResult) = super.reportResult(result.copy(attributes = result.attributes + attr))
+    override def toString : String = "AtrributeDelegatingCtx(" + attr + " to " + self + ")"
+  }
+  /**
+   * Creates a new PerformanceTestRunContext that will append the given attribute to tests.
+   */
+  def addAxisValue[T,U](axisVal : (String,U)) : PerformanceTestRunContext = new DelegatedPerformanceTestRunContext(self) {
+    override  def reportResult(result : PerformanceTestResult) = super.reportResult(result.copy(axisData = result.axisData + axisVal))
+    override def toString : String = "AxiseDelegatingCtx(" + axisVal + " to " + self + ")"
+  }
+}
+
+/**
+ * Delegating version of the PerformanceTestRunContext
+ */
+abstract class DelegatedPerformanceTestRunContext(delegate : PerformanceTestRunContext) extends PerformanceTestRunContext {  
+  override def reportResult(result : PerformanceTestResult) : Unit = delegate.reportResult(result)
+}
+
+object NullPerformanceTestRunContext extends PerformanceTestRunContext {
+  override def reportResult(result : PerformanceTestResult) : Unit = {}
 }
 
 
@@ -38,13 +64,6 @@ trait PerformanceTest {
     def isClass = !isObject && !isTrait
 
     if(isObject) "Object-" + className.dropRight(1) else "Class-" + className
-  }
-
-  //Default handler for now...
-  implicit def handler : ReportHandler = new ReportHandler {
-    def reportResult(result : PerformanceTestResult) {
-        Console.println(result)
-    }
   }
 
 

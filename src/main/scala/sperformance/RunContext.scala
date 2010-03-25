@@ -1,5 +1,6 @@
 package sperformance
 
+import charting.Charting
 import org.jfree.chart.{ChartUtilities, JFreeChart}
 import collection.mutable.ListBuffer
 import java.io.{FileOutputStream, BufferedOutputStream, PrintStream, File}
@@ -10,6 +11,7 @@ import java.io.{FileOutputStream, BufferedOutputStream, PrintStream, File}
  * This interface is by no means complete.
  */
 trait RunContext {
+  def testContext : PerformanceTestRunContext
   def writeResultingChart(clusterName : List[String], chartName : String, chart : JFreeChart) : Unit
 }
 
@@ -20,6 +22,8 @@ class DefaultRunContext(val outputDirectory : File, testName : String) extends R
   val defaultChartHeight = 500
   val defaultChartWidth = 500
 
+  //Funny how all our intelligence is embedded here for generating clusters...
+  override val testContext = new intelligence.ClusterResults 
 
   case class Chart(clusterName : List[String], chartName : String, chartFile: File)
 
@@ -95,6 +99,7 @@ class DefaultRunContext(val outputDirectory : File, testName : String) extends R
     }  finally {
       output.close()
     }
-
+    //TODO - more cleverness about how we make charts?
+    Charting.createReports(testContext.clusters, this)
   }
 }

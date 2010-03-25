@@ -46,7 +46,7 @@ private[sperformance] object PerformanceTestHelper {
   def measureMultiple(runs: Int)(method: Function0[Unit]) = for(i <- 1 to runs) yield measureOnce(method)
 
   def measure(method : Function0[Unit])(implicit combineResults : Seq[Long] => Long = MinAggregator) : Long = {
-    combineResults(measureMultiple(5)(method))
+    combineResults(measureMultiple(10)(method))
   }
 
 

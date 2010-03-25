@@ -42,6 +42,6 @@ object SizeChartGenerator extends ChartGenerator {
        //Second we should compare methods on the same module....
        val chart = ChartFactory.createXYLineChart(chartName, "size", "time", series, PlotOrientation.VERTICAL, true, true, false)
        context.writeResultingChart(List(sizeAxisName),chartName, chart)
-     }
+     }  
 
 }

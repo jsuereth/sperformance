@@ -1,29 +1,24 @@
- package sperformance
- package generators
+package sperformance
+package generators
 
 
-import util.PerformanceTestHelper
-
-/** Generator that iterates through sizes and generates performance results */
-class SizeGenerator[T](startSize : Int, endSize : Int, module : String, method : String, setup : Int => T) {
+class IntGenerator(name : String,  startSize : Int, endSize : Int) extends Generator[Int] with GeneratorOperations[Int] {
   private[sperformance] lazy val medianSize = (endSize - startSize) / 2
 
 
-  def run(f : T => Unit)(implicit handler : ReportHandler) : Unit = {
-    import PerformanceTestHelper._
-     //Warmup JVM
-     {
-       val warmUpState = setup(medianSize)
-       warmUpJvm(() => f(warmUpState))  //TODO - Warmup on median ok?
-     }
-     val result = for {
-       size <- startSize to endSize
-       val setupState = setup(size)
-       val time = measure(() => f(setupState))
-     } handler.reportResult(PerformanceTestResult(time,
-         Map("size" -> size),
-         Map("module" -> module, "method" -> method)
-      ))
-
+  private class SizeGeneratorTestRun[S](size : Int, setupFunc : Int => S, testFunc : S => Unit) extends AbstractPerformanceTestRun[S] {
+      override def setup = () => setupFunc(size)
+      override def test(s : S) : Unit  = testFunc(s)
+      /** Apply whatever mods we need to the context for this specific test... e.g. Adding attribtues */
+      override def modifyContext(ctx : PerformanceTestRunContext) : PerformanceTestRunContext = {
+        ctx addAxisValue (name -> size)
+      }
   }
+
+  override def genWarmUp[S](setup : Int => S)(test : S => Unit) : PerformanceTestRun[S] = new SizeGeneratorTestRun(medianSize, setup, test)
+  override def genTests[S](setup : Int => S)(test : S => Unit) : Traversable[PerformanceTestRun[S]] =
+    for(i <- startSize to endSize) yield new SizeGeneratorTestRun(i, setup,test)
+
+
+  override def toString : String = "IntGenerator(" + name + ", " + startSize + " to " + endSize + ")"
 }

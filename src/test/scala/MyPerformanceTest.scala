@@ -1,8 +1,7 @@
-import _root_.sperformance.charting.ChartingReporterTest
 import _root_.sperformance.dsl.PerformanceDSLTest
 import collection.mutable.ListBuffer
 
-object MyPerformanceTest extends PerformanceDSLTest with ChartingReporterTest {
+object MyPerformanceTest extends PerformanceDSLTest {
   performance of "List" in {
     measure method "foreach" in {
       withSize upTo 1000 withSetup { size =>

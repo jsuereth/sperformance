@@ -38,7 +38,7 @@ class Cluster(val metaData : ClusterMetaData) {
  *
  * For now we implement just one method cuz we're lazy...
  */
-class ClusterResults extends ReportHandler {
+class ClusterResults extends PerformanceTestRunContext {
   
   var clusters  = Map[ClusterMetaData, Cluster]()
 
@@ -60,4 +60,6 @@ class ClusterResults extends ReportHandler {
         cluster.addResult(result)
       }
   }
+
+  override def toString = "ClusterResults()"
 }
