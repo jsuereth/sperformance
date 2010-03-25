@@ -1,4 +1,5 @@
 package sperformance
+package dsl
 
 import scala.reflect.Manifest
 import collection.mutable.ListBuffer

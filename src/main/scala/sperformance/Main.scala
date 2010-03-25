@@ -1,7 +1,6 @@
 package sperformance
 
-import java.io.File
-
+import java.io.{FileOutputStream, PrintStream, BufferedOutputStream, File}
 
 object Main {
   var outputDirectory = new File("target/sperformance")
@@ -18,6 +17,34 @@ object Main {
       test.runTest(context)
       context.generateResultsPage()
     }
+  }
+
+  def writeMainSite(tests: PerformanceTest*) {
+    val names = tests.map(_.name)
+
+
+    def content = (<html>
+      <head><title>SPerformance Results</title></head>
+      <body>
+        <h1>SPerformance Results</h1>
+        <ul>
+          {
+             for(name <- names) yield (<li>
+               <a href={name+"/index.html"}>{name}</a>
+             </li>)
+          }
+        </ul>
+      </body>
+    </html>)
+
+    val index = new File(outputDirectory, "index.html")
+    val output = new PrintStream(new BufferedOutputStream(new FileOutputStream(index)))
+    try {
+      output.println(content)
+    }  finally {
+      output.close()
+    }
+
   }
 
 

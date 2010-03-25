@@ -48,16 +48,34 @@ class DefaultRunContext(val outputDirectory : File, testName : String) extends R
   import scala.xml._
   def resultsPage : Node = (<html>
     <head><title>{testName} Results</title></head>
+    <style type="text/css">{
+""".cluster h1 {
+      text-align: center;
+    }
+    .clusterResults {
+     width: 90%;
+    }
+    .chart {
+      float: left;
+      clear: none;
+      width: 50%;
+      text-align: center;
+    }"""
+         }</style>
     <body>
       {
          for {
            (cluster, charts) <- charts.groupBy( c => c.clusterName)
-         } yield <div class="clusterResult">
-           <h1>Cluster - {cluster}</h1>
+         } yield <div class="cluster">
+           <h1>Graphed By {cluster}</h1>
+           <div class="attributes">
+             {
+                //TODO - Output Cluster attributes that lead to this chart?
+             }
+           </div>
            <div class="clusterResults">
              {
                for(chart <- charts) yield <div class="chart">
-                   <h2>{chart.chartName}</h2>
                    <img src={util.FileUtils.relativePath(outputDirectory, chart.chartFile)} alt={"Image - " + chart.chartName}/>
                </div>
              }
