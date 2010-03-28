@@ -105,6 +105,19 @@ trait PerformanceDSLTest extends PerformanceTest {
     }
   }
 
+  object having {
+    def attribute[A](attr : (String, A)) = new {
+      def in[A](f : => A) {
+        withNewContext(_.addAttribute(attr))(f)
+      }
+    }
+    def axis_value[A](axis : (String, A)) = new {
+      def in[A](f : => A) {
+        withNewContext(_.addAxisValue(axis))(f)
+      }
+    }
+  }
+
   /**
    * This class is returned when the DSL is able to make use of the current performance test generator.
    */
