@@ -2,9 +2,25 @@ package sperformance
 package util
 
 import annotation.tailrec
-import java.io.{FileFilter, File}
+import java.io.{FileFilter, File, BufferedWriter}
 
 object FileUtils {
+
+  def withBufferedWriterFor[A](file : File)(f : BufferedWriter => A) = {
+    ensureParentExists(file)
+    val output = new BufferedWriter(new java.io.FileWriter(file))
+    try {
+      f(output)
+    } finally {
+      output.close();
+    }
+  }
+
+  def ensureParentExists(file : File) : Unit = {
+    val dir = file.getParentFile
+    if(!dir.isDirectory) dir.mkdirs()
+  }
+
   def relativePath(dir : File, file : File) : String = {
     lazy val dirPath = {
       val path = dir.getAbsolutePath

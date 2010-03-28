@@ -71,8 +71,8 @@ trait PerformanceDSLTest extends PerformanceTest {
   /**
    * This method will execute a performance test.
    */
-  override def runTest(context : RunContext) : Unit  = {
-    _current_context = context.testContext
+  override def runTest(context : PerformanceTestRunContext) : Unit  = {
+    _current_context = context
     executeDelayedTasks()
     super.runTest(context);
   }

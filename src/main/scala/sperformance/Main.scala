@@ -11,12 +11,37 @@ object Main {
     runTests(tests.map(_.newInstance) : _* )
   }
 
-  def runTests(tests : PerformanceTest*) {
-    for(test <- tests) {
-      val context = new DefaultRunContext(new File(outputDirectory,test.name), test.name)
-      test.runTest(context)
-      context.generateResultsPage()
+  def withOutputFileStream(testName : String)(f : java.io.BufferedWriter => Unit) = {
+    //TODO - Use Scala I/O!
+    val file = new File(outputDirectory, "tests/" + testName + "-sperf.xml")
+    val dir = file.getParentFile
+    if(!dir.isDirectory) dir.mkdirs()
+
+    val output = new java.io.BufferedWriter(new java.io.FileWriter(file))
+    try {
+      f(output)
+    } finally {
+      output.close();
     }
+  }
+  
+  def runTests(tests : PerformanceTest*) {
+    import _root_.sperformance.codec._
+    val codec : OutputCodec = new XmlOutputCodec(new File(outputDirectory,"tests"))
+    for(test <- tests) {
+      Console.println("Running test " + test.name + " ....")              
+      codec.withOutputFileForTest(test.name) {
+        testWriter =>
+          val context = new PerformanceTestRunContext {
+            def reportResult(result : PerformanceTestResult) : Unit = {
+              testWriter.writeResult(result)
+            }
+          }
+          test.runTest(context)
+      }
+    }
+    //TODO - MapReduce into clusters
+    //TODO - Create Graphs!
   }
 
   def writeMainSite(tests: PerformanceTest*) {
