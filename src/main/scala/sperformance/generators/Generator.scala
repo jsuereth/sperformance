@@ -25,13 +25,27 @@ trait AbstractPerformanceTestRun[S] extends  PerformanceTestRun[S] {
 }
 
 /**
- * Interface for performance test generators
+ * Interface for performance test generators. A  Generator is used to create any number of performance tests for a given type.
+ * Generators also have a mechanism to generate a "warmup" test which is used in an attempt to get hotspot to optimize a
+ * particular code path before measuring its execution.
  *
- * 
+ * Generators are also required to modify the current test context with axis values relating to the generated types from
+ * this generator.   The informatino is used in clustering and graphing of performance results over a given variable.
+ * The type of the generator is assumed to be an independent variable for graphing.
+ *
+ * Note: Generators are monadic in nature.
  */
 trait Generator[T] {
-
+  /**
+   * Creates a single performance test run that can be used to "warm up" the JVM hotspot for warm performance testing.
+   */
   def genWarmUp[S](setup : T => S)(test : S => Unit) : PerformanceTestRun[S]
+
+  /**
+   * Generates a Traversable of the performance tests that need to be executed.
+   *
+   * TODO - TraversableView?
+   */
   def genTests[S](setup : T => S)(test : S => Unit) : Traversable[PerformanceTestRun[S]]
 
 
@@ -78,7 +92,12 @@ trait GeneratorOperations[T] extends Generator[T]{
   override def flatMap[U](f : T => Generator[U]) : Generator[U] = new NestedGenerator(this, f)
 }
 
-/** Maps a generator to another type */
+/** Maps a generator to another type using a transform function
+ *  @param T   The new type generated
+ *  @param U   The original generated type.
+ *  @param g   The original generator
+ *  @param transform   The function that modified the type generated
+ */
 private [generators] final class MappedGenerator[T,U](g : Generator[T], transform : T => U) extends GeneratorOperations[U] {
   override def genWarmUp[S](setup : U => S)(test : S => Unit) : PerformanceTestRun[S] = g.genWarmUp( transform andThen setup)(test)
   override def genTests[S](setup : U => S)(test : S => Unit) : Traversable[PerformanceTestRun[S]] = g.genTests(transform andThen setup)(test)
@@ -86,7 +105,12 @@ private [generators] final class MappedGenerator[T,U](g : Generator[T], transfor
   override def toString : String = "MappedGenerator(" + g + ")"
 }
 
-/** Nests one generator in another */
+/** Nests one generator in another.   Creates a new generator that will contain cross-product of all generated tests.
+ *  @param T   The original Generated Type
+ *  @param U   The new generated type
+ *  @param g   The original generator
+ *  @param f   The transformation function to take a generated type T and create a new Generator of U tests.
+ */
 private[generators] final class NestedGenerator[T,U](g : Generator[T], f : T=>Generator[U]) extends GeneratorOperations[U] {  
   override def genWarmUp[S](setup : U => S)(test : S => Unit) : PerformanceTestRun[S] = {
     //Steal value of warmUp early....

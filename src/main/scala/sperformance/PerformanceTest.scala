@@ -3,14 +3,21 @@ package sperformance
 import generators._
 
 /**
+ * This class represents all state recorded from a given performance test.  It is the quantum of communicatoin of data in
+ * the entire system.
+ *
  * @param time  The average time it took to run the test
  * @param axisData  Data relating to alternative axes, such as size of collections.  For checking algorithmic growth
  * @param attributes  Random attribtues relating to this run e.g. the class/method under test.
  */
 case class PerformanceTestResult(time : Long, axisData : Map[String, Any], attributes : Map[String, Any])
 
-/** A Handler for specific performance test results */
+/** A Handler for specific performance test results.   This is the means by which generators report testing
+ * results.   This can be modified with various attributes/axis values before being passed to a generator of tests.
+ * Also, it allows users to define their own mechanisms of testing performance and reporting results. */
 trait PerformanceTestRunContext { self =>
+
+  /** Reports a test result to this context.  The current attributes/axis values are appended and sent to the performance reporting engine. */
   def reportResult(result : PerformanceTestResult) : Unit
 
   /**
@@ -30,7 +37,8 @@ trait PerformanceTestRunContext { self =>
 }
 
 /**
- * Delegating version of the PerformanceTestRunContext
+ * Delegating version of the PerformanceTestRunContext.   This class is used to make the decorator pattern (used in
+ * the addAttribute and addAxisValue methods) easier to implement.
  */
 abstract class DelegatedPerformanceTestRunContext(delegate : PerformanceTestRunContext) extends PerformanceTestRunContext {  
   override def reportResult(result : PerformanceTestResult) : Unit = delegate.reportResult(result)

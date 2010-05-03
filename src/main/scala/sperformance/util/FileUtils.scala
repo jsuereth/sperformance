@@ -5,6 +5,17 @@ import annotation.tailrec
 import java.io.{FileFilter, File}
 
 object FileUtils {
+
+  def ensureDirectoryExists(file : File) : Unit = {
+    val dir = file.getParentFile
+    if(!dir.exists()) {
+      dir.mkdirs();
+    }
+  }
+
+  /**
+   * Obtains the relative path between a directory and a file
+   */
   def relativePath(dir : File, file : File) : String = {
     lazy val dirPath = {
       val path = dir.getAbsolutePath

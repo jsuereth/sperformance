@@ -2,6 +2,11 @@ package sperformance
 package generators
 
 
+/**
+ * A Generator of Integers.   This currently works by generating a range of integers (with increment of one).
+ *
+ * TODO -  Take Range[Int] in constructor...
+ */
 class IntGenerator(name : String,  startSize : Int, endSize : Int) extends Generator[Int] with GeneratorOperations[Int] {
   private[sperformance] lazy val medianSize = (endSize - startSize) / 2
 

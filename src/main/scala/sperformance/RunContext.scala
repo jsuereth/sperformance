@@ -4,6 +4,7 @@ import charting.Charting
 import org.jfree.chart.{ChartUtilities, JFreeChart}
 import collection.mutable.ListBuffer
 import java.io.{FileOutputStream, BufferedOutputStream, PrintStream, File}
+import util.FileUtils
 
 /**
  * Abstract interface designed to allow customize where reports go and how they are generated. (i.e. could be sent to a Swing UI).
@@ -11,6 +12,7 @@ import java.io.{FileOutputStream, BufferedOutputStream, PrintStream, File}
  * This interface is by no means complete.
  */
 trait RunContext {
+  /** The context to use when running tests */
   def testContext : PerformanceTestRunContext
   def writeResultingChart(clusterName : List[String], chartName : String, chart : JFreeChart) : Unit
 }
@@ -93,6 +95,7 @@ class DefaultRunContext(val outputDirectory : File, testName : String) extends R
   def generateResultsPage() {
     val content = resultsPage
     val index = new File(outputDirectory, "index.html")
+    FileUtils.ensureDirectoryExists(index)
     val output = new PrintStream(new BufferedOutputStream(new FileOutputStream(index)))
     try {
       output.println(content)

@@ -64,4 +64,28 @@ object MyPerformanceTest extends PerformanceDSLTest {
       }
     }
   }
+
+   performance of "java.util.ArrayList" in {
+     import scala.collection.JavaConversions._
+    measure method "foreach" in {
+      withSize upTo 1000 withSetup { size =>
+        val collection = new java.util.ArrayList[Int](size+1)
+        for(i <- 1 to size) collection.add(i)
+        collection
+      } run { collection =>
+        var tmp = 0
+        collection.foreach(x => tmp = x * 20)
+      }
+    }
+   measure method "size" in {
+      withSize upTo 1000 withSetup { size =>
+        val collection = new java.util.ArrayList[Int](size+1)
+        for(i <- 1 to size) collection.add(i)
+        collection
+      } run { collection =>
+        var tmp = 0
+        tmp += collection.size
+      }
+    }
+  }
 }

@@ -2,6 +2,9 @@ package sperformance
 
 import java.io.{FileOutputStream, PrintStream, BufferedOutputStream, File}
 
+/**
+ * This object is meant to be the final runner of the SPerformance test framework.
+ */
 object Main {
   var outputDirectory = new File("target/sperformance")
 
