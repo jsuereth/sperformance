@@ -4,6 +4,7 @@ import collection.Traversable
 import collection.immutable.List
 import collection.immutable.Vector
 import collection.mutable.ListBuffer
+import collection.mutable.LinkedList
 
 
 trait TraverableTestHelper extends sperformance.dsl.PerformanceDSLTest {
@@ -46,6 +47,47 @@ trait TraverableTestHelper extends sperformance.dsl.PerformanceDSLTest {
           tmp
         }
       }
+
+      measure method "foldRight" in {
+         withSize upTo 1000 withSetup setup run { collection =>
+          var tmp = collection.foldRight(0)(_+_)
+          tmp
+        }
+      }
+
+      measure method "isEmpty" in {
+         withSize upTo 1000 withSetup setup run { collection =>
+          collection.isEmpty
+        }
+      }
+
+
+      measure method "filter" in {
+         withSize upTo 1000 withSetup setup run { collection =>
+          collection.filter(_%2==0)
+        }
+      }
+
+      measure method "collect" in {
+         withSize upTo 1000 withSetup setup run { collection =>
+          collection.collect {
+            case x : Int if x % 2 == 0 => x
+          }
+        }
+      }
+
+      measure method "parition" in {
+         withSize upTo 1000 withSetup setup run { collection =>
+          collection.partition(_%2==0)
+        }
+      }
+
+      measure method "groupBy" in {
+         withSize upTo 1000 withSetup setup run { collection =>
+          collection.groupBy(_ % 3)
+        }
+      }
+
     }
   }
 
@@ -68,6 +110,18 @@ trait JavaCollectionTestHelper extends sperformance.dsl.PerformanceDSLTest {
 }
 
 object ColShootOutTest extends TraverableTestHelper {
+  makeTraversableTest[Vector] { size =>
+    var collection : Vector[Int] = Vector[Int]()
+    for( i <- 1 to size) collection = collection :+ i //collection = collection.updated(i,i)
+    collection
+  }
+
+  makeTraversableTest[LinkedList] { size =>
+    var collection = LinkedList[Int]()
+     collection = collection ++ (1 to size).toList 
+    collection
+  }
+
   makeTraversableTest[List](size => (1 to size).toList)
   makeTraversableTest[ListBuffer] { size =>
     val collection = new ListBuffer[Int]
@@ -87,17 +141,13 @@ object ColShootOutTest extends TraverableTestHelper {
   //TODO - We need to test java collections directly... but use similar names for comparison...
   import collection.JavaConversions
   
-  makeTraversableTest[java.util.HashSet] { size =>
-    val x = new java.util.HashSet[Int]
-    for(i <- 1 to size) x.add(i)
-    x
-  }(implicitly[Manifest[java.util.HashSet[Int]]], JavaConversions.asIterable(_ : java.util.Collection[Int]))
+//  makeTraversableTest[java.util.HashSet] { size =>
+//    val x = new java.util.HashSet[Int]
+//    for(i <- 1 to size) x.add(i)
+//    x
+//  }(implicitly[Manifest[java.util.HashSet[Int]]], JavaConversions.asIterable(_ : java.util.Collection[Int]))
   //makeTraversableTest[Set] { size => (1 to size).toSet }
-  /*makeTraversableTest[Vector] { size =>
-    var collection : Vector[Int] = new Vector[Int](0, size+2, size+2/2)
-    for( i <- 1 to size) collection += i //collection = collection.updated(i,i)
-    collection
-  } */
+
 
 }
 

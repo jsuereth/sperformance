@@ -21,8 +21,8 @@ trait RunContext {
 //This just dumps charts into output directories...
 class DefaultRunContext(val outputDirectory : File, testName : String) extends RunContext {
 
-  val defaultChartHeight = 500
-  val defaultChartWidth = 500
+  val defaultChartHeight = 600
+  val defaultChartWidth = 800
 
   //Funny how all our intelligence is embedded here for generating clusters...
   override val testContext = new intelligence.ClusterResults 
