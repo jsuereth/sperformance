@@ -93,6 +93,11 @@ class DefaultRunContext(val outputDirectory : File, testName : String) extends R
 
 
   def generateResultsPage() {
+    //TODO - more cleverness about how we make charts?
+    Charting.createReports(testContext.clusters, this)
+
+    // order is important resultsPage depends on charts the fact that charts
+    // have already been created
     val content = resultsPage
     val index = new File(outputDirectory, "index.html")
     FileUtils.ensureDirectoryExists(index)
@@ -102,7 +107,5 @@ class DefaultRunContext(val outputDirectory : File, testName : String) extends R
     }  finally {
       output.close()
     }
-    //TODO - more cleverness about how we make charts?
-    Charting.createReports(testContext.clusters, this)
   }
 }
