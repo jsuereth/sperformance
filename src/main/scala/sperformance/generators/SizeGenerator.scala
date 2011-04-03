@@ -7,7 +7,7 @@ package generators
  *
  * TODO -  Take Range[Int] in constructor...
  */
-class IntGenerator(name : String,  startSize : Int, endSize : Int) extends Generator[Int] with GeneratorOperations[Int] {
+case class IntGenerator(name : String,  startSize : Int, endSize : Int, increment : Int) extends Generator[Int] with GeneratorOperations[Int] {
   private[sperformance] lazy val medianSize = (endSize - startSize) / 2
 
 
@@ -22,8 +22,8 @@ class IntGenerator(name : String,  startSize : Int, endSize : Int) extends Gener
 
   override def genWarmUp[S](setup : Int => S)(test : S => Unit) : PerformanceTestRun[S] = new SizeGeneratorTestRun(medianSize, setup, test)
   override def genTests[S](setup : Int => S)(test : S => Unit) : Traversable[PerformanceTestRun[S]] =
-    for(i <- startSize to endSize) yield new SizeGeneratorTestRun(i, setup,test)
+    for(i <- startSize to endSize by increment) yield new SizeGeneratorTestRun(i, setup,test)
 
 
-  override def toString : String = "IntGenerator(" + name + ", " + startSize + " to " + endSize + ")"
+  override def toString : String = "IntGenerator(" + name + ", " + startSize + " to " + endSize + " by "+increment+")"
 }
