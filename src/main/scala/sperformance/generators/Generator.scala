@@ -39,7 +39,7 @@ trait Generator[T] {
   /**
    * Creates a single performance test run that can be used to "warm up" the JVM hotspot for warm performance testing.
    */
-  def genWarmUp[S](setup : T => S)(test : S => Unit) : PerformanceTestRun[S]
+  def  genWarmUp[S](setup : T => S)(test : S => Unit) : PerformanceTestRun[S]
 
   /**
    * Generates a Traversable of the performance tests that need to be executed.
@@ -78,11 +78,15 @@ trait Generator[T] {
 trait GeneratorOperations[T] extends Generator[T]{
 
   override def runTests[S](setup : T => S)(f : S => Unit)(ctx : PerformanceTestRunContext) : Unit = {
-    Console.println("Running generator " + this + " on ctx " + ctx)
 
+    Console.println("Warming up generator " + this + " on ctx " + ctx)
+    val time = System.currentTimeMillis
      //Warmup JVM
     val warmUpTest = genWarmUp(setup)(f)
     warmUpJvm(() => warmUpTest.run(NullPerformanceTestRunContext))
+    val warmUpTime = System.currentTimeMillis - time
+    Console.println("Warmup done in " + (warmUpTime / 1000.0) + " seconds");
+    Console.println("Running generator " + this + " on ctx " + ctx)
     //Execute Tests
     genTests(setup)(f).foreach(_.run(ctx))
   }
