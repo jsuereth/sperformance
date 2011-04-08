@@ -39,7 +39,10 @@ trait PerformanceDSLTest extends PerformanceTest {
       g
     }
   }
-  private def popGenerators() {
+  private def popGenerator() = {
+    _current_generator.pop()
+  }
+  private def clearGenerators() = {
     _current_generator.clear()
   }
   private def withCurrentGenerator[A](f : Generator[A] => Unit) = f(_current_generator.head.asInstanceOf[Generator[A]])
@@ -122,10 +125,15 @@ trait PerformanceDSLTest extends PerformanceTest {
    * This class is returned when the DSL is able to make use of the current performance test generator.
    */
   sealed class GeneratorUser[T] {
+    def by(increment : Int) = {
+      val gen = popGenerator().asInstanceOf[IntGenerator]
+      addGenerator(gen.copy(increment = increment))
+      this
+    }    
     def withSetup[A](setup : T => A) = new {
       def run(test : A => Unit) : Unit = {
         withCurrentGenerator[T](_.runTests(setup)(test)(_current_context))
-        popGenerators()
+        clearGenerators()
       }
     }
 
@@ -138,7 +146,7 @@ trait PerformanceDSLTest extends PerformanceTest {
   sealed trait IntGeneratorDSLStarter extends GeneratorDSLStarter {
     val name : String
     def upTo(max : Int) = {
-      addGenerator(new IntGenerator(name,1,max))
+      addGenerator(new IntGenerator(name,1,max,1))
       new GeneratorUser[Int]
     }
   }
