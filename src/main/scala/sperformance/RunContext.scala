@@ -19,6 +19,13 @@ trait RunContext {
   /** The context to use when running tests */
   def testContext : PerformanceTestRunContext
   def writeResultingChart(clusterName : List[String], chartName : String, chart : JFreeChart) : Unit
+  lazy val defaultTestContext = testContext addAttribute
+    ("jvm-version", System.getProperty("java.vm.version")) addAttribute
+    ("jvm-vendor", System.getProperty("java.vm.vendor")) addAttribute
+    ("jvm-name", System.getProperty("java.vm.name")) addAttribute
+    ("os-name", System.getProperty("os.name")) addAttribute
+    ("os-arch", System.getProperty("os.arch")) addAttribute
+    ("cores", Runtime.getRuntime.availableProcessors)
 }
 
 
