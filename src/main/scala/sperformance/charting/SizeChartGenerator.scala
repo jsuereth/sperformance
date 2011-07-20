@@ -16,7 +16,7 @@ object SizeChartGenerator extends ChartGenerator {
   private def makeSeriesName(result : PerformanceTestResult) = result.attributes.values.mkString("-")
 
   def makeChartName(cluster : Cluster) =  {
-    cluster.metaData.attributes.mkString(" & ") + " By Size"
+    cluster.metaData.attributes.mkString(" & ").replace(">", "") + " By Size"
   }
 
   def makeSeries(cluster : Cluster) = {
