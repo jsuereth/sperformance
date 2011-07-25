@@ -4,12 +4,20 @@ import java.io.File
 object GoalTest extends sperformance.dsl.PerformanceDSLTest {
   performance of "List" in {
     measure method "foreach" in {
-      withSize upTo 1000 by 100 withSetup { size =>
+      withSize from 100 upTo 1000 by 100 withSetup { size =>
         (1 to size).toList
       } run { collection =>
         var tmp = 0
         collection.foreach(x => tmp + x)
       } 
+    }
+    measure method "view foreach" in {
+    	withSize from 100 upTo 1000 by 100 withSetup { size =>
+    	(1 to size).toList
+    	} run { collection =>
+    	var tmp = 0
+    	collection.view.foreach(x => tmp + x)
+    	} 
     }
   }
   
@@ -17,7 +25,7 @@ object GoalTest extends sperformance.dsl.PerformanceDSLTest {
     val context = new sperformance.HistoricalRunContext(new File("target/sperformance/historical"), new XmlStoreResults(_), new XmlLoadResults(_))
     runTest(context)
     
-    context.generateResultsPage()
+    context.generateResultsPage(name)
 
   }
 }

@@ -145,7 +145,13 @@ trait PerformanceDSLTest extends PerformanceTest {
 
   sealed trait IntGeneratorDSLStarter extends GeneratorDSLStarter {
     val name : String
-    def upTo(max : Int) = {
+    def from(start:Int) = new GeneratorDSLStarter {
+      def upTo(max : Int) = {
+	      addGenerator(new IntGenerator(name,1,max,1))
+	      new GeneratorUser[Int]
+	    }
+    }
+  	def upTo(max : Int) = {
       addGenerator(new IntGenerator(name,1,max,1))
       new GeneratorUser[Int]
     }

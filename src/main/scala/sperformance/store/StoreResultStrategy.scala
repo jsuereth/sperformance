@@ -38,7 +38,7 @@ class CsvLoadResults(source:URL) extends LoadResultStrategy {
 }
 
 class CsvStoreResults(outputFile:File) extends StoreResultStrategy {
-  private def makeSeriesName(cluster:Cluster)(result : PerformanceTestResult) = cluster.makeName(result.attributes)
+  private def makeSeriesName(cluster:Cluster)(result : PerformanceTestResult) = Cluster.makeName(result.attributes)
   private def quote(string:String) = "\""+string.replaceAll("\"","\\\"")+"\""
   def write(results: ClusterResults) = {
     outputFile.getParentFile.mkdirs
@@ -116,9 +116,9 @@ class XmlStoreResults(outFile:File) extends StoreResultStrategy {
 }
 
 class XmlLoadResults(xmlFile:URL) extends LoadResultStrategy {
-  private def readMap(version:String, mapRoot:NodeSeq)= Map(mapRoot \\ "element" map{readObj(version)} :_*)
-  private def readObj(version:String)(e:Node) = {    
-      val name = version + (e \\ "name").text
+  private def readMap(mapRoot:NodeSeq)= Map(mapRoot \\ "element" map{readObj} :_*)
+  private def readObj(e:Node) = {    
+      val name = (e \\ "name").text
       val value = "<java class=\"java.beans.XMLDecoder\">"+(e \\ "value" \ "_").toString+"</java>"
       val in = new ByteArrayInputStream(value.getBytes("UTF-8"))
       val dec = new XMLDecoder(in)
@@ -132,8 +132,8 @@ class XmlLoadResults(xmlFile:URL) extends LoadResultStrategy {
     val xml = XML.load(xmlFile)
     (xml \\ "result") foreach { nextResult =>
       val time = (nextResult \\ "@time").text.toLong
-      val atts = readMap(version+" - ", nextResult \ "attributes")
-      val axisData = readMap("", nextResult \ "axisData")
+      val atts = readMap(nextResult \ "attributes") + ("version" -> version)
+      val axisData = readMap(nextResult \ "axisData")
       val report = PerformanceTestResult(time,axisData = axisData, attributes = atts)
       testContext.reportResult(report)
     }

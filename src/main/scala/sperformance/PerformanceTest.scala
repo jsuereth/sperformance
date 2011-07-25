@@ -3,12 +3,12 @@ package sperformance
 import generators._
 
 /**
- * This class represents all state recorded from a given performance test.  It is the quantum of communicatoin of data in
+ * This class represents all state recorded from a given performance test.  It is the quantum of communication of data in
  * the entire system.
  *
  * @param time  The average time it took to run the test
  * @param axisData  Data relating to alternative axes, such as size of collections.  For checking algorithmic growth
- * @param attributes  Random attribtues relating to this run e.g. the class/method under test.
+ * @param attributes  Random attributes relating to this run e.g. the class/method under test.
  */
 case class PerformanceTestResult(time : Long, axisData : Map[String, Any], attributes : Map[String, Any])
 
@@ -78,7 +78,7 @@ trait PerformanceTest {
   /**
    * This method will execute a performance test.
    */
-  def runTest(context :RunContext) : Unit  = {  }
+  def runTest(context :RunContext) : Unit  = {context.testFinished(this)}
 
 
 }
