@@ -46,7 +46,9 @@ class Cluster(val metaData : ClusterMetaData) {
 class ClusterResults extends PerformanceTestRunContext {
   
   var clusters  = Map[ClusterMetaData, Cluster]()
-
+  override def attribute[U](key: String): Option[U] = None
+  override def axisValue[U](key: String): Option[U] = None
+	
   def addAndReturnCluster(cluster : Cluster) : Cluster = {
     Console.println("Creating cluster: " + cluster.metaData)
     clusters += ((cluster.metaData, cluster))

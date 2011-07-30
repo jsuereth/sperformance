@@ -19,7 +19,7 @@ trait PerformanceTestRun[S] {
 trait AbstractPerformanceTestRun[S] extends  PerformanceTestRun[S] {
   def run(ctx  : PerformanceTestRunContext) : Unit = {
     val s = setup()
-    val result = measure(() => test(s))
+    val result = measure(() => test(s),ctx.attribute(Keys.TestRuns))
     modifyContext(ctx).reportResult(PerformanceTestResult(result, Map(), Map()));
   }
 }
@@ -79,11 +79,12 @@ trait GeneratorOperations[T] extends Generator[T]{
 
   override def runTests[S](setup : T => S)(f : S => Unit)(ctx : PerformanceTestRunContext) : Unit = {
 
-    Console.println("Warming up generator " + this + " on ctx " + ctx)
+    val warmupRuns = ctx.attribute(Keys.WarmupRuns)
+    Console.println("Warming up generator " + this + " with "+warmupRuns+" runs" + " on ctx " + ctx)
     val time = System.currentTimeMillis
      //Warmup JVM
     val warmUpTest = genWarmUp(setup)(f)
-    warmUpJvm(() => warmUpTest.run(NullPerformanceTestRunContext))
+    warmUpJvm(() => warmUpTest.run(NullPerformanceTestRunContext), warmupRuns)
     val warmUpTime = System.currentTimeMillis - time
     Console.println("Warmup done in " + (warmUpTime / 1000.0) + " seconds");
     Console.println("Running generator " + this + " on ctx " + ctx)

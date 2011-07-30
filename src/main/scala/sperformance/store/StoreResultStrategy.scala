@@ -1,5 +1,6 @@
 package sperformance.store
 
+import sperformance.Keys
 import sperformance.PerformanceTestResult
 import java.net.URL
 import sperformance.intelligence.{Cluster, ClusterResults}
@@ -132,7 +133,9 @@ class XmlLoadResults(xmlFile:URL) extends LoadResultStrategy {
     val xml = XML.load(xmlFile)
     (xml \\ "result") foreach { nextResult =>
       val time = (nextResult \\ "@time").text.toLong
-      val atts = readMap(nextResult \ "attributes") + ("version" -> version)
+      val nonVersionedAtts = readMap(nextResult \ "attributes")
+      val versionInfo = nonVersionedAtts.get(Keys.Version) map {value => Keys.Version -> (version + value)} getOrElse (Keys.Version -> version)
+      val atts = nonVersionedAtts + versionInfo
       val axisData = readMap(nextResult \ "axisData")
       val report = PerformanceTestResult(time,axisData = axisData, attributes = atts)
       testContext.reportResult(report)

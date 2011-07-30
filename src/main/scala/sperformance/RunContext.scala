@@ -9,7 +9,6 @@ import util.FileUtils
 import java.net.URL
 import store.StoreResultStrategy
 import store.LoadResultStrategy
-import sperformance.charting.HistoricChartGenerator
 import sperformance.intelligence.ClusterMetaData
 import org.jfree.data.category.CategoryDataset
 import org.jfree.data.category.DefaultCategoryDataset
@@ -160,9 +159,15 @@ class DefaultRunContext(val outputDirectory : File, testName : String) extends R
 class HistoricalRunContext(historyDir:File, storeFactory:File => StoreResultStrategy, loadFactory:URL => LoadResultStrategy) extends RunContext {
 
   val versionsDir = new File(historyDir, "versions")
+  val graphsDir = new File(historyDir, "graphs") // probably also needs to be parameterized somehow
+  graphsDir.mkdirs()
+  
   val testContext = new PerformanceTestRunContext {
     val allVersions = new intelligence.HistoricalResults
     val results = new intelligence.HistoricalResults
+
+    override def attribute[U](key:String):Option[U] = results.attribute[U](key)
+    override def axisValue[U](key:String):Option[U] = results.axisValue[U](key)
 
     def reportResult(result : PerformanceTestResult) = {
       allVersions.reportResult(result)
@@ -194,15 +199,26 @@ class HistoricalRunContext(historyDir:File, storeFactory:File => StoreResultStra
         println(key)
         key
     }.map { case (group, map) => (group,map.map { case (key, value) => value }) }
+    
+    def version(atts:Map[String,Any]) = 
+      atts.find(_._1 == Keys.Version).map(v => v._2.toString) getOrElse "current"
+      
+    def clusterSorterByVersion(r1:Cluster, r2:Cluster):Boolean = {
+      def clusterVersion(c:Cluster) = version(c.metaData.attributes)
+      
+      val v1 = clusterVersion(r1)
+      val v2 = clusterVersion(r2)
 
+      if(v1 == "current") false
+      else if(v2 == "current") true
+      else v1.compareToIgnoreCase(v2) < 0
+    }
     for ((grouping, value) <- chartGrouping) {
       val dataset = new DefaultCategoryDataset()
-      for {cluster <- value
-           result <- cluster.results} {
-
-        val version = result.attributes.find(_._1 == "version").map(v => "version "+v._2) getOrElse "current version"
+      for {cluster <- value.toSeq.sortWith(clusterSorterByVersion)
+          result <- cluster.results} {
         
-        dataset.addValue(result.time, version, result.axisData.head._2.toString)
+        dataset.addValue(result.time, version(result.attributes), result.axisData.head._2.toString)
       }
 
       val name = Cluster.makeName(grouping)
@@ -247,7 +263,9 @@ class HistoricalRunContext(historyDir:File, storeFactory:File => StoreResultStra
         val domainAxis = plot.getDomainAxis();
         domainAxis.setCategoryLabelPositions(
                 CategoryLabelPositions.createUpRotationLabelPositions(Math.Pi / 6.0));
-        FileUtils.outputStream(new File(historyDir.getParentFile(), "graphs/"+chartName+"-"+name+".png")){
+        val chartDir = new File(graphsDir, chartName)
+        chartDir.mkdirs
+        FileUtils.outputStream(new File(chartDir,name+".png")){
           out =>
           	ChartUtilities.writeChartAsPNG(out,chart,800, 600)
         }
