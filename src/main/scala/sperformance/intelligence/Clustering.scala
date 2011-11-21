@@ -10,10 +10,17 @@ case class ClusterMetaData(attributes : Map[String,Any], axis : Set[String]) {
   def matchesCluster(result : PerformanceTestResult) : Boolean = {
     def containsAxis = axis.forall(result.axisData.contains)
 
-    def containsAttribtues = attributes.forall { case (key, value) =>
+    def containsAttributes = attributes.forall { case (key, value) =>
       result.attributes.get(key).map(_ == value).getOrElse(false)
     }
-    containsAttribtues && containsAxis
+    containsAttributes && containsAxis
+  }
+}
+
+object Cluster {
+  def makeName(attributes: Map[String, Any]) = {
+    val sortedAttributeKeys = attributes.keySet.toList.sortWith((x, y) => x.toLowerCase >= y.toLowerCase())
+    sortedAttributeKeys.flatMap(attributes.get).mkString("", "-", "")
   }
 }
 /** A cluster of results */
@@ -27,10 +34,8 @@ class Cluster(val metaData : ClusterMetaData) {
   }
 
 
-  def makeName(attributes : Map[String, Any]) = {
-    def sortedAttributeKeys = attributes.keySet.toList.sortWith( (x,y) => x.compareToIgnoreCase(y) >= 0)
-    sortedAttributeKeys.flatMap(attributes.get).mkString("", "-","")
-  }
+  def name = Cluster.makeName(metaData.attributes)
+
 }
 
 /**
@@ -41,7 +46,9 @@ class Cluster(val metaData : ClusterMetaData) {
 class ClusterResults extends PerformanceTestRunContext {
   
   var clusters  = Map[ClusterMetaData, Cluster]()
-
+  override def attribute[U](key: String): Option[U] = None
+  override def axisValue[U](key: String): Option[U] = None
+	
   def addAndReturnCluster(cluster : Cluster) : Cluster = {
     Console.println("Creating cluster: " + cluster.metaData)
     clusters += ((cluster.metaData, cluster))

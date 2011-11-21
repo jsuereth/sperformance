@@ -7,8 +7,19 @@ import collection.mutable.ListBuffer
 import java.io.{FileOutputStream, BufferedOutputStream, PrintStream, File}
 import util.FileUtils
 import java.net.URL
-import scalax.io.Resource
-import scalax.io.Codec
+import store.StoreResultStrategy
+import store.LoadResultStrategy
+import sperformance.intelligence.ClusterMetaData
+import org.jfree.data.category.CategoryDataset
+import org.jfree.data.category.DefaultCategoryDataset
+import org.jfree.chart.ChartFactory
+import org.jfree.chart.plot.PlotOrientation
+import java.awt.Color
+import org.jfree.chart.plot.CategoryPlot
+import org.jfree.chart.axis.NumberAxis
+import org.jfree.chart.renderer.category.BarRenderer
+import java.awt.GradientPaint
+import org.jfree.chart.axis.CategoryLabelPositions
 
 /**
  * Abstract interface designed to allow customize where reports go and how they are generated. (i.e. could be sent to a Swing UI).
@@ -19,6 +30,7 @@ trait RunContext {
   /** The context to use when running tests */
   def testContext : PerformanceTestRunContext
   def writeResultingChart(clusterName : List[String], chartName : String, chart : JFreeChart) : Unit
+  def testFinished(test:PerformanceTest):Unit = {}
   lazy val defaultTestContext = testContext addAttribute
     ("jvm-version", System.getProperty("java.vm.version")) addAttribute
     ("jvm-vendor", System.getProperty("java.vm.vendor")) addAttribute
@@ -122,35 +134,163 @@ class DefaultRunContext(val outputDirectory : File, testName : String) extends R
 }
 
 /**
- * Generates no charts, instead this writes the results to a file so that tests can be tracked
- * and charted over time
+ * Creates bar charts that compares the results of several versions for each test ran. 
+ * 
+ *  Basically it runs the test and collects the results.  When the test is finished it writes
+ *  the results of the test in the historyDir/versions/current/filename.xml (in reality it is not
+ *  dependent on an xml file but the only useful implementation at the moment is xml so I am hardcoding that
+ *  until we have other solutions.)
+ *  
+ *  Once the files is written the same directoy (historyDir/versions) is checked for other versions and
+ *  all others are loaded as well (but with the version information added).  
+ *  
+ *  All versions of the same module,test and method are grouped together and drawn to a bar chart with the
+ *  versions drawn together as a category.  
+ *  
+ *  Since the chart is a bar chart it can only represent data with a few data points.  For example
+ *  a test of size 0 to 1000 is a bad candidate.  On the other hand a test of size 100 to 1000 by 250 is fine
+ *  because it only has 4 data points per version.
+ * 
+ * @param historyDir The directory containing the history of performance tests
+ * @param newVersion if true then a new version will be create if false then 
+ * 				 	 the latest version will be overridden
+ * @param factory    The factory function for creating a StoreResultStrategy 
  */
-class CSVRunContext(outputFile:File) extends RunContext {
+class HistoricalRunContext(historyDir:File, storeFactory:File => StoreResultStrategy, loadFactory:URL => LoadResultStrategy) extends RunContext {
 
-  val testContext = new intelligence.ClusterResults
+  val versionsDir = new File(historyDir, "versions")
+  val graphsDir = new File(historyDir, "graphs") // probably also needs to be parameterized somehow
+  graphsDir.mkdirs()
+  
+  val testContext = new PerformanceTestRunContext {
+    val allVersions = new intelligence.HistoricalResults
+    val results = new intelligence.HistoricalResults
+
+    override def attribute[U](key:String):Option[U] = results.attribute[U](key)
+    override def axisValue[U](key:String):Option[U] = results.axisValue[U](key)
+
+    def reportResult(result : PerformanceTestResult) = {
+      allVersions.reportResult(result)
+      results.reportResult(result)
+    }
+  }
+  val currentVersionDir = new File(versionsDir, "current")
+  
   def writeResultingChart(clusterName : List[String], chartName : String, chart : JFreeChart) : Unit = {
-    // this doesn't write charts
+    val allVersions = testContext.allVersions
+    
+    val grapher = new DefaultRunContext(new File(historyDir.getParentFile(), "graphs"), "unknown"){
+      override val testContext = allVersions
+    };
+    
+    grapher.writeResultingChart(clusterName, chartName, chart)
   }
 
-  private def makeSeriesName(cluster:Cluster)(result : PerformanceTestResult) = cluster.makeName(result.attributes)
+  def generateResultsPage(chartName:String) {
+    val VersionExtractor = """(.+? %% )?(.*)""".r
 
-  def writeResults() = {
-    outputFile.getParentFile.mkdirs
-    Resource.fromFile(outputFile).writer(Codec.UTF8).acquireFor {
-      writer =>
-        for {
-          (md, cluster) <- testContext.clusters
-          val clusterName = md.attributes.mkString("-")
-          (name,results) <- cluster.results.groupBy(makeSeriesName(cluster) _)
-          result <- results
-            (axisName,axisData) <- result.axisData
-        } {
-          val rowData = (clusterName, name,axisName,axisData,result.time)
-          val rowAsStrings = rowData.productIterator map {_.toString} map {_.replace("\"","\\\"")}
-          writer.write(rowAsStrings mkString ("\"","\",\"","\""))
-          writer.write("\n")
+    def dropVersion(md: ClusterMetaData) = {
+    	md.attributes.map { case (VersionExtractor(version, att), value) => (att, value) }
+    }
+
+    val chartGrouping = testContext.allVersions.clusters.groupBy {
+      case (md, cluster) =>
+        val key = md.attributes.filter(n => n._1 == "module" || n._1 == "method")
+        println(key)
+        key
+    }.map { case (group, map) => (group,map.map { case (key, value) => value }) }
+    
+    def version(atts:Map[String,Any]) = 
+      atts.find(_._1 == Keys.Version).map(v => v._2.toString) getOrElse "current"
+      
+    def clusterSorterByVersion(r1:Cluster, r2:Cluster):Boolean = {
+      def clusterVersion(c:Cluster) = version(c.metaData.attributes)
+      
+      val v1 = clusterVersion(r1)
+      val v2 = clusterVersion(r2)
+
+      if(v1 == "current") false
+      else if(v2 == "current") true
+      else v1.compareToIgnoreCase(v2) < 0
+    }
+    for ((grouping, value) <- chartGrouping) {
+      val dataset = new DefaultCategoryDataset()
+      for {cluster <- value.toSeq.sortWith(clusterSorterByVersion)
+          result <- cluster.results} {
+        
+        dataset.addValue(result.time, version(result.attributes), result.axisData.head._2.toString)
+      }
+
+      val name = Cluster.makeName(grouping)
+      val chart = ChartFactory.createBarChart(name, // chart title
+        value.head.metaData.axis.head, // domain axis label
+        "time", // range axis label
+        dataset, // data
+        PlotOrientation.VERTICAL, // orientation
+        true, // include legend
+        true, // tooltips?
+        false // URLs?
+        );
+      
+      
+        chart.setBackgroundPaint(Color.white);
+        
+        val plot = chart.getPlot().asInstanceOf[CategoryPlot];
+        plot.setBackgroundPaint(Color.lightGray);
+        plot.setDomainGridlinePaint(Color.white);
+        plot.setDomainGridlinesVisible(true);
+        plot.setRangeGridlinePaint(Color.white);
+
+        
+        val rangeAxis = plot.getRangeAxis().asInstanceOf[NumberAxis];
+        rangeAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+
+        // disable bar outlines...
+        val renderer = plot.getRenderer().asInstanceOf[BarRenderer];
+        renderer.setDrawBarOutline(false);
+        /*
+                // set up gradient paints for series...
+        val gp0 = new GradientPaint(0.0f, 0.0f, Color.blue,
+                0.0f, 0.0f, new Color(0, 0, 64));
+        val gp1 = new GradientPaint(0.0f, 0.0f, Color.green,
+                0.0f, 0.0f, new Color(0, 64, 0));
+        val gp2 = new GradientPaint(0.0f, 0.0f, Color.red,
+                0.0f, 0.0f, new Color(64, 0, 0));
+        renderer.setSeriesPaint(0, gp0);
+        renderer.setSeriesPaint(1, gp1);
+        renderer.setSeriesPaint(2, gp2);*/
+
+        val domainAxis = plot.getDomainAxis();
+        domainAxis.setCategoryLabelPositions(
+                CategoryLabelPositions.createUpRotationLabelPositions(Math.Pi / 6.0));
+        val chartDir = new File(graphsDir, chartName)
+        chartDir.mkdirs
+        FileUtils.outputStream(new File(chartDir,name+".png")){
+          out =>
+          	ChartUtilities.writeChartAsPNG(out,chart,800, 600)
         }
     }
 
+  }
+  
+  /**
+   * Write out a version
+   */
+  def writeVersion(testName:String) = {
+    currentVersionDir.mkdirs()
+    val testOutputFile = new File(currentVersionDir,testName+".xml")
+    val strategy = storeFactory(testOutputFile)
+    strategy.write(testContext.results)
+  }
+
+  override def testFinished(test: PerformanceTest): Unit = {
+    def list(f: File) = Option(f.listFiles) getOrElse Array[File]()
+   
+    writeVersion(test.name)
+    val versions = list(versionsDir).filterNot { _.getName == currentVersionDir.getName() }
+    for (file <- versions.flatMap { f => list(f).find(_.getName() == test.name + ".xml") }) {
+      val version = file.getParentFile().getName()
+      loadFactory(file.toURI.toURL).read(version, testContext.allVersions)
+    }
   }
 }

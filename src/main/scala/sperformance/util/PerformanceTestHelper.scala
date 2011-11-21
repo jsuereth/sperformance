@@ -8,7 +8,8 @@ package util
 private[sperformance] object PerformanceTestHelper {
 
   /** Currently the number of times we run the warm up test when warming up the JVM. */
-  lazy val warmUpRuns = 100000 //TODO - Lookup in some manenr...
+  lazy val defaultWarmUpRuns = 100000
+  lazy val defaultRuns = 10
 
   /**
    * Aggregates test results by taking an average.
@@ -51,8 +52,9 @@ private[sperformance] object PerformanceTestHelper {
   /** Runs a given function enough that the HotSpot JVM should optimize the method.
    * TODO - Do not warm up non JIT/HotSpot JVMs.
    */
-  def warmUpJvm(method: Function0[Unit]) {
-     for(i <- 1 to warmUpRuns) method.apply()
+  def warmUpJvm(method: Function0[Unit],warmUpRuns:Option[Int]) {
+     val runs = warmUpRuns getOrElse defaultWarmUpRuns
+     for(i <- 1 to runs) method.apply()
    }
 
   /**
@@ -89,8 +91,8 @@ private[sperformance] object PerformanceTestHelper {
    * @return
    *                The aggregated result of the  performance test.
    */
-  def measure(method : Function0[Unit])(implicit combineResults : Seq[Long] => Long = MinAggregator) : Long = {
-    combineResults(measureMultiple(10)(method))
+  def measure(method : Function0[Unit],runs:Option[Int])(implicit combineResults : Seq[Long] => Long = MinAggregator) : Long = {
+    combineResults(measureMultiple(runs getOrElse defaultRuns)(method))
   }
 
 
