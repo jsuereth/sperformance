@@ -17,50 +17,8 @@ trait StoreResultStrategy {
   def write(results:ClusterResults):Unit
 }
 trait LoadResultStrategy {
-  def read(version:String, testContext:PerformanceTestRunContext):PerformanceTestRunContext
+  def read(version:String, testContext:PerformanceTestRunContext, filter:PerformanceTestResult => Boolean):PerformanceTestRunContext
 }
-
-
-
-class CsvLoadResults(source:URL) extends LoadResultStrategy {
-  private def toMap(data:Seq[String]) = {
-    val parts = data.map(_ split "->" toSeq).map{case Seq(key,value) => (key,value)}
-    Map(parts:_*)
-  }
-  override def read(version:String, testContext:PerformanceTestRunContext):PerformanceTestRunContext = {
-    for ( line <- io.Source.fromURL(source).getLines() ) {
-      val Seq(_, time, rest @ _*) = line.split("\",\"").toSeq
-      val (axisData,atts) = rest.span(_ != "|")
-      val result = PerformanceTestResult(time = time.toLong, axisData = toMap(axisData), attributes = toMap(atts drop 1))
-      testContext.reportResult(result)
-    }
-    testContext
-  }
-}
-
-class CsvStoreResults(outputFile:File) extends StoreResultStrategy {
-  private def makeSeriesName(cluster:Cluster)(result : PerformanceTestResult) = Cluster.makeName(result.attributes)
-  private def quote(string:String) = "\""+string.replaceAll("\"","\\\"")+"\""
-  def write(results: ClusterResults) = {
-    outputFile.getParentFile.mkdirs
-    FileUtils.writer(outputFile) {
-      writer =>
-        for {
-          (cluster,i) <- results.clusters.values.zipWithIndex
-          (moduleName,results) <- cluster.results.groupBy(makeSeriesName(cluster) _)
-          result <- results
-        } {
-          val atts = result.attributes.toSeq map {case (key,value) => key.toString + "->" + value}
-          val axisData = result.axisData.toSeq map {case (key,value) => key.toString + "->" + value}
-          val rowData = (i +: result.time +: axisData) ++ ("|" +: atts)
-          val rowAsStrings = rowData map {_.toString} map (quote)
-          writer.write(rowAsStrings mkString ",")
-          writer.write("\n")
-        }
-    }
-  }
-}
-
 
 class XmlStoreResults(outFile:File) extends StoreResultStrategy {
   private def encode(elem:Any):NodeSeq = {
@@ -129,7 +87,7 @@ class XmlLoadResults(xmlFile:URL) extends LoadResultStrategy {
 
       name -> obj
   }
-  override def read(version:String, testContext:PerformanceTestRunContext): PerformanceTestRunContext = {
+  override def read(version:String, testContext:PerformanceTestRunContext, filter:PerformanceTestResult => Boolean): PerformanceTestRunContext = {
     val xml = XML.load(xmlFile)
     (xml \\ "result") foreach { nextResult =>
       val time = (nextResult \\ "@time").text.toLong
@@ -138,7 +96,9 @@ class XmlLoadResults(xmlFile:URL) extends LoadResultStrategy {
       val atts = nonVersionedAtts + versionInfo
       val axisData = readMap(nextResult \ "axisData")
       val report = PerformanceTestResult(time,axisData = axisData, attributes = atts)
-      testContext.reportResult(report)
+      if(filter(report)) {
+          testContext.reportResult(report)
+      }
     }
     testContext
   }

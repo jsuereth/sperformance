@@ -78,7 +78,10 @@ trait PerformanceDSLTest extends PerformanceTest {
     _current_context = context.defaultTestContext
     executeDelayedTasks()
     super.runTest(context);
+    tearDown()
   }
+  
+  def tearDown() = ()
 
 
   /**

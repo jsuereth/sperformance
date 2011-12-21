@@ -7,10 +7,15 @@ package sperformance
  */
 object Keys {
   /**
-   * A key for Historical Run Context, all versions of the same module and methos
+   * A key for Historical Run Context, all versions of the same module and methods
    * will be compared together in a single graph
    */
   val Version = "version"
+  /**
+   * A key for Historical Run Context, when loading old data the baseline from the old and new will be compared
+   * to determine how much to scale the version results.
+   */
+  val Baseline = "baseline"
   /**
    * The number of warm-up runs used to warm up the JVM before running the test
    */

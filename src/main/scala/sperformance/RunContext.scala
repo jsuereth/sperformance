@@ -161,64 +161,89 @@ class HistoricalRunContext(historyDir:File, storeFactory:File => StoreResultStra
   val versionsDir = new File(historyDir, "versions")
   val graphsDir = new File(historyDir, "graphs") // probably also needs to be parameterized somehow
   graphsDir.mkdirs()
+
+  val currentVersionKey = "current"
   
   val testContext = new PerformanceTestRunContext {
     val allVersions = new intelligence.HistoricalResults
     val results = new intelligence.HistoricalResults
 
-    override def attribute[U](key:String):Option[U] = results.attribute[U](key)
-    override def axisValue[U](key:String):Option[U] = results.axisValue[U](key)
+    override def attribute[U](key: String): Option[U] = results.attribute[U](key)
+    override def axisValue[U](key: String): Option[U] = results.axisValue[U](key)
 
-    def reportResult(result : PerformanceTestResult) = {
+    def reportResult(result: PerformanceTestResult) = {
       allVersions.reportResult(result)
       results.reportResult(result)
     }
   }
-  val currentVersionDir = new File(versionsDir, "current")
-  
-  def writeResultingChart(clusterName : List[String], chartName : String, chart : JFreeChart) : Unit = {
+  val currentVersionDir = new File(versionsDir, currentVersionKey)
+
+  def writeResultingChart(clusterName: List[String], chartName: String, chart: JFreeChart): Unit = {
     val allVersions = testContext.allVersions
-    
-    val grapher = new DefaultRunContext(new File(historyDir.getParentFile(), "graphs"), "unknown"){
+
+    val grapher = new DefaultRunContext(new File(historyDir.getParentFile(), "graphs"), "unknown") {
       override val testContext = allVersions
     };
-    
+
     grapher.writeResultingChart(clusterName, chartName, chart)
   }
 
-  def generateResultsPage(chartName:String) {
+  def group(md: ClusterMetaData) = md.attributes.filter(n => n._1 == "module" || n._1 == "method")
+
+  def isBaseline(elem: (ClusterMetaData, Cluster)) = elem._1.attributes.exists(_._1 == Keys.Baseline)
+  
+  def version(atts: Map[String, Any]) = atts.find(_._1 == Keys.Version).map(v => v._2.toString) getOrElse currentVersionKey
+  def isCurrentVersion(elem: (ClusterMetaData, Cluster)) = version(elem._1.attributes) == currentVersionKey
+  def resultTitle(result: PerformanceTestResult) = result.axisData.head._2.toString
+
+  def baselineTimes:Map[String,Double] = {
+    val currentTimes:Map[String,Long] = testContext.results.clusters.filter(isBaseline).flatMap {
+      case (md,cluster) => 
+        val groupId = group(md).mkString
+        cluster.results.map{r =>
+          (groupId+r.axisData("size"), r.time)
+        }
+        
+    }
+    val allTimes:Map[String,Double] = testContext.allVersions.clusters.filter(isBaseline).filterNot(isCurrentVersion).flatMap {
+      case (md, cluster) =>
+        cluster.results.map { result =>
+          val groupId = group(md).mkString+result.axisData("size")
+          val time = result.time.toDouble / currentTimes.getOrElse(groupId, result.time)
+          (groupId+resultTitle(result), time) }
+    }.toMap
+    allTimes
+  }
+
+  def generateResultsPage(chartName: String) {
     val VersionExtractor = """(.+? %% )?(.*)""".r
 
     def dropVersion(md: ClusterMetaData) = {
-    	md.attributes.map { case (VersionExtractor(version, att), value) => (att, value) }
+      md.attributes.map { case (VersionExtractor(version, att), value) => (att, value) }
     }
 
-    val chartGrouping = testContext.allVersions.clusters.groupBy {
-      case (md, cluster) =>
-        val key = md.attributes.filter(n => n._1 == "module" || n._1 == "method")
-        println(key)
-        key
-    }.map { case (group, map) => (group,map.map { case (key, value) => value }) }
-    
-    def version(atts:Map[String,Any]) = 
-      atts.find(_._1 == Keys.Version).map(v => v._2.toString) getOrElse "current"
-      
-    def clusterSorterByVersion(r1:Cluster, r2:Cluster):Boolean = {
-      def clusterVersion(c:Cluster) = version(c.metaData.attributes)
-      
+    val chartGrouping = testContext.allVersions.clusters.filterNot(isBaseline).groupBy {
+      entry => group(entry._1)
+    }.map { case (group, map) => (group, map.map { case (key, value) => value }) }
+
+    def clusterSorterByVersion(r1: Cluster, r2: Cluster): Boolean = {
+      def clusterVersion(c: Cluster) = version(c.metaData.attributes)
+
       val v1 = clusterVersion(r1)
       val v2 = clusterVersion(r2)
 
-      if(v1 == "current") false
-      else if(v2 == "current") true
+      if (v1 == currentVersionKey) false
+      else if (v2 == currentVersionKey) true
       else v1.compareToIgnoreCase(v2) < 0
     }
     for ((grouping, value) <- chartGrouping) {
       val dataset = new DefaultCategoryDataset()
-      for {cluster <- value.toSeq.sortWith(clusterSorterByVersion)
-          result <- cluster.results} {
-        
-        dataset.addValue(result.time, version(result.attributes), result.axisData.head._2.toString)
+      for {
+        cluster <- value.toSeq.sortWith(clusterSorterByVersion)
+        result <- cluster.results
+      } {
+        val title = resultTitle(result)
+        dataset.addValue(result.time * baselineTimes.getOrElse(grouping.mkString+title,1.0), currentVersionKey, title)
       }
 
       val name = Cluster.makeName(grouping)
@@ -231,24 +256,22 @@ class HistoricalRunContext(historyDir:File, storeFactory:File => StoreResultStra
         true, // tooltips?
         false // URLs?
         );
-      
-      
-        chart.setBackgroundPaint(Color.white);
-        
-        val plot = chart.getPlot().asInstanceOf[CategoryPlot];
-        plot.setBackgroundPaint(Color.lightGray);
-        plot.setDomainGridlinePaint(Color.white);
-        plot.setDomainGridlinesVisible(true);
-        plot.setRangeGridlinePaint(Color.white);
 
-        
-        val rangeAxis = plot.getRangeAxis().asInstanceOf[NumberAxis];
-        rangeAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+      chart.setBackgroundPaint(Color.white);
 
-        // disable bar outlines...
-        val renderer = plot.getRenderer().asInstanceOf[BarRenderer];
-        renderer.setDrawBarOutline(false);
-        /*
+      val plot = chart.getPlot().asInstanceOf[CategoryPlot];
+      plot.setBackgroundPaint(Color.lightGray);
+      plot.setDomainGridlinePaint(Color.white);
+      plot.setDomainGridlinesVisible(true);
+      plot.setRangeGridlinePaint(Color.white);
+
+      val rangeAxis = plot.getRangeAxis().asInstanceOf[NumberAxis];
+      rangeAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+
+      // disable bar outlines...
+      val renderer = plot.getRenderer().asInstanceOf[BarRenderer];
+      renderer.setDrawBarOutline(false);
+      /*
                 // set up gradient paints for series...
         val gp0 = new GradientPaint(0.0f, 0.0f, Color.blue,
                 0.0f, 0.0f, new Color(0, 0, 64));
@@ -260,37 +283,46 @@ class HistoricalRunContext(historyDir:File, storeFactory:File => StoreResultStra
         renderer.setSeriesPaint(1, gp1);
         renderer.setSeriesPaint(2, gp2);*/
 
-        val domainAxis = plot.getDomainAxis();
-        domainAxis.setCategoryLabelPositions(
-                CategoryLabelPositions.createUpRotationLabelPositions(Math.Pi / 6.0));
-        val chartDir = new File(graphsDir, chartName)
-        chartDir.mkdirs
-        FileUtils.outputStream(new File(chartDir,name+".png")){
-          out =>
-          	ChartUtilities.writeChartAsPNG(out,chart,800, 600)
-        }
+      val domainAxis = plot.getDomainAxis();
+      domainAxis.setCategoryLabelPositions(
+        CategoryLabelPositions.createUpRotationLabelPositions(Math.Pi / 6.0));
+      val chartDir = new File(graphsDir, chartName)
+      chartDir.mkdirs
+      FileUtils.outputStream(new File(chartDir, name + ".png")) {
+        out =>
+          ChartUtilities.writeChartAsPNG(out, chart, 800, 600)
+      }
+      import FileUtils.listFiles
+      // print out some html files for browsing the different graphs
+      listFiles(graphsDir).foreach { moduleDir =>
+        val graphs = listFiles(moduleDir).filter(_.getName.endsWith(".png"))
+      }
     }
 
   }
-  
+
   /**
    * Write out a version
    */
-  def writeVersion(testName:String) = {
+  def writeVersion(testName: String) = {
     currentVersionDir.mkdirs()
-    val testOutputFile = new File(currentVersionDir,testName+".xml")
+    val testOutputFile = new File(currentVersionDir, testName + ".xml")
     val strategy = storeFactory(testOutputFile)
     strategy.write(testContext.results)
   }
 
   override def testFinished(test: PerformanceTest): Unit = {
     def list(f: File) = Option(f.listFiles) getOrElse Array[File]()
-   
+
     writeVersion(test.name)
     val versions = list(versionsDir).filterNot { _.getName == currentVersionDir.getName() }
     for (file <- versions.flatMap { f => list(f).find(_.getName() == test.name + ".xml") }) {
       val version = file.getParentFile().getName()
-      loadFactory(file.toURI.toURL).read(version, testContext.allVersions)
+      loadFactory(file.toURI.toURL).read(version, testContext.allVersions, onlyScalaIOVersions(version))
     }
+  }
+
+  def onlyScalaIOVersions(version: String) = (report: PerformanceTestResult) => {
+    report.attributes.get(Keys.Version).exists { _ == version } || report.attributes.get(Keys.Baseline).nonEmpty
   }
 }

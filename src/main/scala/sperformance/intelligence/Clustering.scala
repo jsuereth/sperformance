@@ -56,6 +56,7 @@ class ClusterResults extends PerformanceTestRunContext {
   }
 
   def reportResult(result : PerformanceTestResult) : Unit = {
+    println("Adding result")
       //TODO - Add to appropriate clusters of information, adjust clusters as appropriate...
       for {
         attr <- result.attributes

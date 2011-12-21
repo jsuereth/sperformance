@@ -62,4 +62,6 @@ object FileUtils {
       c.close()
     }
   }
+  
+  def listFiles(dir:File) = Option(dir.listFiles).map(_.toList).toList.flatten
 }

@@ -22,7 +22,8 @@ case class IntGenerator(name : String,  startSize : Int, endSize : Int, incremen
 
   override def genWarmUp[S](setup : Int => S)(test : S => Unit) : PerformanceTestRun[S] = new SizeGeneratorTestRun(medianSize, setup, test)
   override def genTests[S](setup : Int => S)(test : S => Unit) : Traversable[PerformanceTestRun[S]] =
-    for(i <- startSize to endSize by increment) yield new SizeGeneratorTestRun(i, setup,test)
+    for(i <- startSize to endSize by increment) yield 
+       new SizeGeneratorTestRun(i, setup,test)
 
 
   override def toString : String = "IntGenerator(" + name + ", " + startSize + " to " + endSize + " by "+increment+")"
