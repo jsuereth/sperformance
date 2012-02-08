@@ -193,7 +193,6 @@ class HistoricalRunContext(historyDir:File, storeFactory:File => StoreResultStra
   def isBaseline(elem: (ClusterMetaData, Cluster)) = elem._1.attributes.exists(_._1 == Keys.Baseline)
   
   def version(atts: Map[String, Any]) = atts.find(_._1 == Keys.Version).map(v => v._2.toString) getOrElse currentVersionKey
-  def isCurrentVersion(elem: (ClusterMetaData, Cluster)) = version(elem._1.attributes) == currentVersionKey
   def resultTitle(result: PerformanceTestResult) = result.axisData.head._2.toString
 
   def baselineTimes:Map[String,Double] = {
@@ -205,7 +204,7 @@ class HistoricalRunContext(historyDir:File, storeFactory:File => StoreResultStra
         }
         
     }
-    val allTimes:Map[String,Double] = testContext.allVersions.clusters.filter(isBaseline).filterNot(isCurrentVersion).flatMap {
+    val allTimes:Map[String,Double] = testContext.allVersions.clusters.flatMap {
       case (md, cluster) =>
         cluster.results.map { result =>
           val groupId = group(md).mkString+result.axisData("size")
@@ -222,7 +221,7 @@ class HistoricalRunContext(historyDir:File, storeFactory:File => StoreResultStra
       md.attributes.map { case (VersionExtractor(version, att), value) => (att, value) }
     }
 
-    val chartGrouping = testContext.allVersions.clusters.filterNot(isBaseline).groupBy {
+    val chartGrouping = testContext.allVersions.clusters.groupBy {
       entry => group(entry._1)
     }.map { case (group, map) => (group, map.map { case (key, value) => value }) }
 
@@ -243,7 +242,7 @@ class HistoricalRunContext(historyDir:File, storeFactory:File => StoreResultStra
         result <- cluster.results
       } {
         val title = resultTitle(result)
-        dataset.addValue(result.time * baselineTimes.getOrElse(grouping.mkString+title,1.0), currentVersionKey, title)
+        dataset.addValue(result.time * baselineTimes.getOrElse(grouping.mkString+result.axisData("size")+title,1.0), version(result.attributes), title)
       }
 
       val name = Cluster.makeName(grouping)
