@@ -3,11 +3,11 @@ libraryDependencies ++= List(
   "commons-io" % "commons-io" % "2.0"
 )
 
-organization := "com.github.jsuereth"
+organization := "com.jsuereth"
 
 name := "sperformance"
 
-version := "0.1"
+version := "0.2"
 
 scalaVersion := "2.10.0-SNAPSHOT"
 
