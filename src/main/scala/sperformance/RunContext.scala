@@ -262,7 +262,7 @@ class HistoricalRunContext(historyDir:File, storeFactory:File => StoreResultStra
 
         val domainAxis = plot.getDomainAxis();
         domainAxis.setCategoryLabelPositions(
-                CategoryLabelPositions.createUpRotationLabelPositions(Math.Pi / 6.0));
+                CategoryLabelPositions.createUpRotationLabelPositions(java.lang.Math.PI / 6.0));
         val chartDir = new File(graphsDir, chartName)
         chartDir.mkdirs
         FileUtils.outputStream(new File(chartDir,name+".png")){
