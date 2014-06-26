@@ -1,5 +1,5 @@
 sperformance (under BSD License... TODO - Add that...)
 
-SPerformance is an attempt to create a performance testing frmaework for use with SBT and Scala projects.  SPerformance is supposed to take performance related tests and create pretty graphs displaying the results for you.
+SPerformance is an attempt to create a performance testing framework for use with SBT and Scala projects.  SPerformance is supposed to take performance related tests and create pretty graphs displaying the results for you.
 
 The second goal of SPerformance is to save historical information about a project and be able to compare current performance to previous performance.   This project is to help the scala-io project and my own book writing.
